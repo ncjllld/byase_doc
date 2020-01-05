@@ -1,1 +1,3 @@
-# byase_doc
+# BYASE software documentation
+
+BYASE software documentation.

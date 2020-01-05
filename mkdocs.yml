@@ -1,0 +1,4 @@
+site_name: BYASE Docs
+theme: readthedocs
+markdown_extensions:
+  - admonition

@@ -9,30 +9,80 @@ Because genes can contain dozens of isoforms, it should be ensured that the MCMC
 
 # Installation of BYASE
 
-BYASE is released as a Python package and can be installed by:
+
+BYASE is released as a Python package which requires **Python 3.6**
+or higher to be installed on the computer.
+
+To install BYASE, some Python packages that BYASE depends on
+should be installed first. In order to to successfully compile
+some of the packages, several system libraries should be
+pre-installed. For example, on **Ubuntu 18.04**, these libraries
+may need to be installed:
+
+```shell
+sudo apt install zlib1g-dev libbz2-dev liblzma-dev
+```
+
+Then, use `pip` to install dependent packages:
+```shell
+pip3 install --user numpy scipy pandas cython
+pip3 install --user pymc3 pyarrow
+pip3 install --user pysam htseq
+```
+
+Then, use `pip` to install BYASE:
 ```shell
 pip3 install --user byase
 ```
-BYASE will automatically install some package dependencies, such as `numpy`, `scipy`, `pandas`, `pymc3`, `htseq` and `pyarrow`. In order to avoid possible installation problems on the server or cluster system, BYASE does not automatically install the package `matplotlib`. To use the **plotting module**, `matplotlib` should be installed manually on the computer:
+
+*After the installation, if you cannot run `byase` from the terminal,
+this is caused by the executable binary file `byase` not being found
+in the system path, you may need to run:*
+```shell
+export PATH=~/.local/bin:$PATH
+```
+
+To use the **plotting module**, `matplotlib` should also be
+installed:
 ```shell
 pip3 install --user matplotlib
 ```
+If BYASE is run on a server or cluster system, the plotting module
+may not be used, then the installation of package `matplotlib` can be
+ignored, because some problem may be encountered during the
+installation of `matplotlib` on such systems.
 
 # Installation of BYASE-GUI
 
-BYASE-GUI is built using the [wxPython](https://wxpython.org/) framework, in order to successfully compile the package `wxPython`, some system libraries should be pre-installed. For example, on **Ubuntu 18.04**, these libraries may need to be installed:
+
+To use BYASE-GUI, BYASE should be installed first, the installation
+of BYASE is documented [here](https://github.com/ncjllld/byase).
+
+BYASE-GUI is built using the [wxPython](https://wxpython.org/)
+framework, in order to successfully compile the package
+`wxPython`, some system libraries should be pre-installed.
+For example, on **Ubuntu 18.04**, these libraries may need
+to be installed:
 ```shell
 sudo apt install libgtk-3-0 libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev freeglut3-dev libwebkitgtk-3.0-dev libjpeg-dev libtiff-dev
 ```
-The package `pathlib2` may also need to be installed:
+Then, use `pip` to install dependent packages:
 ```shell
-pip3 install --user pathlib2
+pip3 install --user psutil
+pip3 install --user wxPython
 ```
-Then BYASE-GUI can be installed by:
+
+Then, use `pip` to install BYASE-GUI:
 ```shell
 pip3 install --user byase-gui
 ```
-This will automatically install `byase`, `wxPython` and `psutil`.
+
+*After the installation, if you cannot run `byase-gui` from the terminal,
+this is caused by the executable binary file `byase-gui` not being found
+in the system path, you may need to run:*
+```shell
+export PATH=~/.local/bin:$PATH
+```
 
 
 # Usage of BYASE
@@ -49,7 +99,12 @@ BYASE supports the following subcommands:
 * `inference` - Perform Bayesian inference on tasks.
 * `resume` - Resume Bayesian inference.
 * `stats` - Stats results.
+* `trace` - Extract MCMC traces.
 * `plot` - Plot.
+
+
+!!! Note
+    The existence of alignment bias greatly affects the ASE results. Since BYASE aims to focus on downstream analysis, it assumes that the alignments are unbiased. For diploid organisms, we recommend that users use phased SNVs to construct a diploid genome using [vcf2diplod](https://github.com/abyzovlab/vcf2diploid), and then align each read with the two haplotypes separately, and choose the best alignment between the two. In this way, the alignment bias should be reduced as much as possible.
 
 ## Generating tasks
 
@@ -129,6 +184,8 @@ The usage of subcommand `inference` is as follows:
 * `-S, --insert-size-std` - The standard deviation of insert-size.
 * `-o, --out-dir` - The path of output directory.
 * `-n, --process` - The number of processes used for parallel computing. (DEFAULT: 1)
+* `-C, --n-mcmc` - The number of MCMC samples. (DEFAULT: 500)
+* `-T, --tune` - The number of tune samples. (DEFAULT: 500)
 * `-c, --count` - The count of tasks to be inferred. If not specified, inference will be done on all tasks.
 
 This command will output the following files into the output directory:
@@ -162,6 +219,17 @@ inferred result. BYASE provides a subcommand to stat the estimate of gene-level 
 This command will create a directory called `stats` (if not exists) in the result directory, then it will generate two files `ASE_geneLevel.csv` and `ASE_isoformLevel.csv` corresponding to gene-level and isoform-level results.
 
 
+## Extract MCMC traces
+
+MCMC trace is useful for diagnosing the convergence of inference results. The usage of subcommand `trace` is as follows:
+
+* `-d, --result-dir` -The paths of result directory.
+* `-i, --task-id` - The ID of the task to extract MCMC traces.
+
+This command will create a directory called  `trace` and create a `csv` file named after the task inside it. The `csv` file contains the MCMC traces of each inferred variable.
+
+
+
 ## Plotting
 
 The plotting module of BYASE will output more comprehensive information about inference results, including the histogram (MCMC samples) of each inferred parameter and sequence coverage of each gene (or isoform) for each allele. The usage of subcommand `plot` is as follows:
@@ -170,6 +238,11 @@ The plotting module of BYASE will output more comprehensive information about in
 * `-i, --task-id` - The ID of the task to plot.
 
 This command will create a directory called `plots` and create a subdirectory named after the task ID inside it. The subplots will be stored in `SVG` format in the subdirectory, and the file `plot_ase.html` contains an arrangement of all the subplots.
+
+The first row of the `html` file contains the results of the gene-level analysis, and each subsequent row contains the results of the isoform-level analysis of each isoform within the gene. Each row contains the posterior distribution (histogram) of the expression ratio of each allele, and the expression difference of every two alleles. Each row also contains the coverage information on each allele.
+
+![Coverage](imgs/coverage.png)
+This is an example of coverage plot. The y-axis represents the coverage. The structure of the gene or transcript is shown at the bottom of the plot. SNPs are shown as colored vertical lines, green for `A`, blue for `C`, yellow for `G`, and red for `T`. It is almost impossible that all reads are uniquely assigned to a certain group. We draw all the reads compatible with this group and separate them according to compatibility. For example, `A1-I1` represents the reads from allele 1 of isoform 1, and `A?-I1` represents the reads from isoform 1, but it is unclear which allele they come from.
 
 
 # Example
@@ -211,3 +284,24 @@ In BYASE-GUI, the corresponding operation is as follows:
 
 **Plotting**
 ![Plots](imgs/plots.png)
+
+
+# Example of polyploid analysis
+
+ASE analysis of polyploid organisms may be very promising, such as the application of epigenetics research in plants. We have provided an simulated example [byase_triploid_example.zip](https://github.com/ncjllld/byase/raw/master/byase_triploid_example.zip) to show how to perform ASE analysis on polyploid samples.
+
+When dealing with polyploid data, the `GFF` annotation still describes the structure of genes, and `BAM` files still contain the alignments of raw reads. The polyploid information should be contained in the `VCF` file, as shown in our example file `test.vcf`.
+
+For polyploid analysis, the option `-p` shoud be used to specify the ploidy when generating tasks:
+```shell
+byase gen-task -g files/test.gff3 -v files/test.vcf -s SIM -p 3 -o anno
+```
+
+Then, the subsequent analysis is roughly the same, BYASE will automaticaly process the polyploid information.
+
+```shell
+byase inference -t anno -b files/test.bam -L 101 -P -M 300 -S 20 -o test
+```
+
+![Plots](imgs/triploid.png)
+The figure illustrates the inference results of the simulated example.
